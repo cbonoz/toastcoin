@@ -1,5 +1,6 @@
 # toastcoin
 Toast MVP Cryptocurrency
+![ToastCoin](static/toast-yellow.png)
 ---
 Concept:
 Create a universal rewards program for restaurants tracked by a restaurant-focused cryptocurrency (ToastCoin).
