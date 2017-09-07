@@ -1,0 +1,2 @@
+# toastcoin
+Toast MVP Cryptocurrency
