@@ -50,11 +50,14 @@ app.post('/sms/sendAmount', (req, res) => {
 
 // ** Socket IO ** //
 
+// TODO: determine how to listen for icoming text messages and 
+// emit events back to the connected client browsers.
 io.on('connection', (client) => {
     // here you can start emitting events to the client 
+    client.on('activity', (interval) => {
+        console.log('client is subscribing to timer with interval ', interval);
+      });
 });
-  
-
 // ** DB ** // 
 
 // Create and connect to the Postgres DB with the table Users (DB: toastcoin)
@@ -62,17 +65,17 @@ const { Client } = require('pg')
 const client = new Client()
 client.connect()
 
-client.query('SELECT $1::text as message', ['Hello world!'], (err, res) => {
-  console.log(err ? err.stack : res.rows[0].message) // Hello World!
-  client.end()
-});
+// client.query('SELECT $1::text as message', ['Hello world!'], (err, res) => {
+//   console.log(err ? err.stack : res.rows[0].message) // Hello World!
+//   client.end()
+// });
 
 // ** Server ** //
+const port = 9006;
+const socketPort = 9007;
 
-const port = 8000;
-
-http.createServer(app).listen(1337, () => {
-  console.log('Express server listening on port 1337');
-    io.listen(port);
-    console.log('listening on port ', port);
+http.createServer(app).listen(port, () => {
+    console.log('Express server listening on port', port);
+    io.listen(socketPort);
+    console.log('socket listening on port ', socketPort);
 });

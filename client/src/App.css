@@ -2,16 +2,77 @@
   text-align: center;
 }
 
+.title-text {
+  font-size: 48px;
+}
+
+.coin-text {
+  color: gray;
+}
+
+.user-list-header-text {
+  font-size: 24px;
+  color: darkgoldenrod;
+}
+
+.large-text {
+  font-size: 24px;
+}
+
+.medium-text {
+  font-size: 20px;
+}
+
+.small-text {
+  font-size: 16px;
+}
+
+.home-content {
+  /* padding: 50px; */
+}
+
+.user-list-content * {
+  color: white
+}
+
+.white {
+  color: white;
+}
+
 .App-logo {
+  padding-top: 8px;
   animation: App-logo-spin infinite 20s linear;
   height: 80px;
 }
 
+.phone-text {
+  font-size: 24px;
+}
+
+.phone-number-text {
+  color: goldenrod;
+}
+
+.left-column {
+  height: 100vh;
+  padding-left: 20px;
+}
+
+.right-column {
+  padding-right: 20px;
+
+}
+
 .App-header {
-  background-color: #222;
-  height: 150px;
-  padding: 20px;
+  background-color:#222;
+  /* height: 150px; */
+  padding-top: 25px;
+  padding-bottom: 20px;
   color: white;
+}
+
+.header-content {
+  vertical-align: middle;
 }
 
 .App-intro {
