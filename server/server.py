@@ -44,7 +44,7 @@ def sms_reply():
         message = toast_coin.get_balance(number)
 
     if message is not None:
-        sio.emit('message', message)
+        sio.emit('activity', message)
     else:
         print("Unparseable incoming message (%s, %s)" % (number, message_body))
 

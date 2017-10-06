@@ -17,9 +17,9 @@ export default class Home extends Component {
             activities: [],
             socket: null
         }
-
     }
 
+    // TODO: connect to server and receive incoming blockchain events.
     
     componentWillMount() {
         this._requestUsers();

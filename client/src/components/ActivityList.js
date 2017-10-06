@@ -12,7 +12,6 @@ export default class ActivityList extends Component {
     componentWillMount() {
         
     }
-    
       
     render() {
         return (
