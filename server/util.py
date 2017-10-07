@@ -14,8 +14,8 @@ def parse_balance_request(sender, body):
 def parse_transaction(sender, body):
     # expect string in the form: <amount> <receiver>
     tokens = body.split()
-    if (len(tokens) != 2:
+    if len(tokens) < 2:
         raise Exception("Expected: <amount> <receiver>")
     amount = float(tokens[0])
-    receiver = tokens[1]
+    receiver = " ".join(tokens[1:])
     return Transaction(sender, receiver, amount)

@@ -24,6 +24,7 @@ app = Flask(__name__)
 
 # create the web3 object instance (pointing to the deployed token contract)
 CONTRACT_ADDR = "1" # TODO: add real address
+MY_NUM = "6506302443"
 
 toast_coin = ToastCoin(CONTRACT_ADDR)
 
@@ -31,15 +32,18 @@ toast_coin = ToastCoin(CONTRACT_ADDR)
 def sms_reply():
     """Process incoming text messages"""
     number = request.form['From']
+    number = number.strip("-")
     message_body = request.form['Body']
 
     message = None
-    if not toast_coin.is_registered(number):
+    if toast_coin.is_unregistered(number, message_body):
         name = message_body 
         message = toast_coin.register(number, name)
     elif util.is_transaction(message_body):
-        transaction = util.parse_transaction(message_body)
-        message = toast_coin.send_amount(transaction.sender, transaction.receiver, transaction.amount)
+        from_addr = toast_coin.get_addr(number)
+        # to_addr = CONTRACT_ADDR # todo: replace with arbitrary address.
+        to_addr = toast_coin.get_addr(MY_NUM)
+        message = toast_coin.send_amount(from_addr, to_addr, amount)
     elif util.is_balance_request(message_body):
         message = toast_coin.get_balance(number)
 
@@ -48,7 +52,7 @@ def sms_reply():
     else:
         print("Unparseable incoming message (%s, %s)" % (number, message_body))
 
-    # Start our TwiML response
+    # Start our TwiML response (if we want to text message the user back)
     # resp = MessagingResponse()
     # Add a message
     # resp.message("The Robots are coming! Head for the hills!")
