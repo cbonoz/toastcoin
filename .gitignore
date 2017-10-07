@@ -4,6 +4,9 @@
 *.so
 *.dylib
 
+toastcontracts/build/*
+toastcontracts/build
+
 # Test binary, build with `go test -c`
 *.test
 

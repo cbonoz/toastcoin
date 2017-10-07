@@ -1,4 +1,4 @@
-var StringLib = artifacts.require("./Strings.sol");
+var Strings = artifacts.require("./Strings.sol");
 var ToastCoin = artifacts.require("./ToastCoin.sol");
 
 module.exports = function(deployer) {

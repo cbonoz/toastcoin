@@ -9,7 +9,7 @@ contract('ToastCoin', function(accounts) {
     });
   });
   it("should send coin correctly", function() {
-    var meta;
+    var toast;
 
     // Get initial balances of first and second account.
     var account_one = accounts[0];
@@ -23,19 +23,19 @@ contract('ToastCoin', function(accounts) {
     var amount = 10;
 
     return ToastCoin.deployed().then(function(instance) {
-      meta = instance;
-      return meta.getBalance.call(account_one);
+      toast = instance;
+      return toast.getBalance.call(account_one);
     }).then(function(balance) {
       account_one_starting_balance = balance.toNumber();
-      return meta.getBalance.call(account_two);
+      return toast.getBalance.call(account_two);
     }).then(function(balance) {
       account_two_starting_balance = balance.toNumber();
-      return meta.sendCoin(account_two, amount, {from: account_one});
+      return toast.sendCoin(account_one, account_two, amount);
     }).then(function() {
-      return meta.getBalance.call(account_one);
+      return toast.getBalance.call(account_one);
     }).then(function(balance) {
       account_one_ending_balance = balance.toNumber();
-      return meta.getBalance.call(account_two);
+      return toast.getBalance.call(account_two);
     }).then(function(balance) {
       account_two_ending_balance = balance.toNumber();
 
