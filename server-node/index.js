@@ -6,6 +6,7 @@ const express = require('express');
 const accountSid = process.env.TWILIO_ACC;
 const authToken = process.env.TWILIO_KEY;
 
+// TODO: readd credentials back in.
 // Require the Twilio module and create a REST client
 // const twilio = require('twilio');
 // const MessagingResponse = twilio.twiml.MessagingResponse;
@@ -14,29 +15,21 @@ const authToken = process.env.TWILIO_KEY;
 const solc = require("solc");
 const fs = require('fs');
 
-// console.log(web3); 
-
-// socketio
-const io = require('socket.io')();
-
-// my libraries.
-// const queries = require('./queries');
-
 // create the express app context.
 const app = express();
 
+// socketio
+const io = require('socket.io')(app);
 // ** Web3 setup ** //
 
 const CONTRACT_ADDR =  '0xc782a84527ffc4e3e2329eb0dd8637db4165a5cf';
 
-var Web3 = require("web3");
-var web3 = new Web3(new Web3.providers.HttpProvider('http://0.0.0.0:8545'));
+const Web3 = require("web3");
+const web3 = new Web3(new Web3.providers.HttpProvider('http://0.0.0.0:8545'));
 // Read standard token contract from https://www.ethereum.org/token
 const solFile = './../toastcontracts/contracts/ToastCoin.sol';
-// const solFile = './../toastcontracts/build/contracts/ToastCoin.json';
 let source = fs.readFileSync(solFile, 'utf8');
 let compiledContract = solc.compile(source, 1);
-// console.log('contract', compiledContract)
 let abi = compiledContract.contracts[':ToastCoin'].interface;
 let bytecode = compiledContract.contracts[':ToastCoin'].bytecode;
 let gasEstimate = web3.eth.estimateGas({data: bytecode});
@@ -45,20 +38,33 @@ let toastContract = new web3.eth.Contract(JSON.parse(abi), CONTRACT_ADDR);
 
 toastContract.options.address = CONTRACT_ADDR;
 console.log('ToastContract', toastContract);
-// instantiate by address
-// const toastContract = ToastContract.new(CONTRACT_ADDR);
 
-toastContract.methods.getStartingAmount().call({from: CONTRACT_ADDR}, (err, res) => {
-    console.log('startingAmount', err, res);
-});
-toastContract.methods.getCreator().call({from: CONTRACT_ADDR}, (err, res) => {
-    console.log('getCreator', err, res);
-});
+// toastContract.methods.getStartingAmount().call({from: CONTRACT_ADDR}, (err, res) => {
+//     console.log('startingAmount', err, res);
+// });
+
+let creator = null;
+let ioSocket = null;
+const port = 9006;
+const socketPort = 9007;
 
 function getAddr(key) {
     const hash = crypto.createHash('sha1').update(key).digest('hex').slice(0,20)
     console.log('createhash', key, hash);
     return hash;
+}
+
+function returnResponse(message) {
+    if (message != null) {
+        if (ioSocket != null) {
+            ioSocket.emit('activity', { message: message });
+            console.log(`emitted message: ${message}`);
+        } else {
+            console.log(`Attempted to emit message (${message}), but ioSocket was null`);
+        }
+    } else {
+        console.log("Unparseable message (" + phoneNumber + ", " + body);
+    }
 }
 
 // ** Routes ** //
@@ -69,41 +75,47 @@ app.post('/tc', (req, res) => {
     console.log('Received message from ' + phoneNumber + ': ' + body);
 
     try {
-        var message = null;
         const bodyAddr = getAddr(body);
-        if (toastContract.isUnregistered(bodyAddr)) {
-            toastContract.register(body, bodyAddr);
-        } else {
-            const tokens = body.split();
-            const cmd = tokens[0].toLowerCase()
-            switch (cmd) {
-                case "send":
-                    // form: send <amount> <toAddr>
-                    const fromAddr = toastContract.getCreator();
-                    const amount = parseInt(tokens[1])
-                    const toAddr = getAddr(tokens[2])
-                    console.log('send', fromAddr, amount, toAddr);
-                    // TODO: finish
-                    message = toastContract.sendCoin(fromAddr, toAddr, amount);
-                    break;
-                case "balance":
-                    console.log('balance', body);
-                    message = toastContract.getBalance()
-                    break;
+        toastContract.methods.isUnregistered(bodyAddr).call({}, (err, res) => {
+            const notRegistered = res;
+            if (notRegistered) {
+                console.log('register', body, bodyAddr);
+                toastContract.methods.register(body, bodyAddr).transact({}, (err, res) => {
+                    console.log('callback register', err ,res);
+                    returnResponse(res);
+                });
+            } else {
+                const tokens = body.split();
+                const cmd = tokens[0].toLowerCase()
+                switch (cmd) {
+                    case "send":
+                        // form: send <amount> <toAddr>
+                        const fromAddr = toastContract.getCreator();
+                        const amount = parseInt(tokens[1])
+                        const toAddr = getAddr(tokens[2])
+                        console.log('sendCoin', fromAddr, amount, toAddr);
+                        toastContract.methods.sendCoin(fromAddr, toAddr, amount).transact({}, (err, res) => {
+                            console.log('callback sendCoin', err, res);
+                            returnResponse(res);
+                        });
+                        break;
+                    case "balance":
+                        console.log('getBalance', body);
+                        toastContract.methods.getBalance().call({}, (err, res) => {
+                            console.log('callback getBalance', err, res);
+                            returnResponse(res);
+                        });
+                        break;
+                }
             }
-        }
-
-        if (message != null) {
-
-        } else {
-            console.log("Unparseable message (" + phoneNumber + ", " + body);
-        }
+        });
     } catch (err) {
+        // General server/formatting exception.
+        // TODO: add specific handling for these exceptions.
         console.log('err: ' + err);
-
     }
-    // TODO: determine if return value necessary here.
 
+    // TODO: determine if return value necessary here.
     // Only need for replying back to the user with a text message.
 //   const twiml = new MessagingResponse();
 //   twiml.message('The Robots are coming! Head for the hills!');
@@ -141,11 +153,23 @@ app.get('/tc/register', (req, res) => {
 // });
 
 // ** Server ** //
-const port = 9006;
-const socketPort = 9007;
+toastContract.methods.getCreator().call({from: CONTRACT_ADDR}, (err, res) => {
+    // fetch the creator before starting the http server (also validates that the contracts are working before starting server.
+    if (err != null) {
+        console.log("ERROR - stopping server launch: " + err);
+        return;
+    }
 
-http.createServer(app).listen(port, () => {
-    console.log('Express server listening on port', port);
-    io.listen(socketPort);
-    console.log('socket listening on port ', socketPort);
+    creator = res;
+    console.log('getCreator', res);
+    http.createServer(app).listen(port, () => {
+        console.log('Express server listening on port', port);
+        io.listen(socketPort);
+        io.on('connection', function (socket) {
+            ioSocket = socket;
+            console.log('new socket connected', socket)
+        });
+
+        console.log('socket listening on port ', socketPort);
+    });
 });
