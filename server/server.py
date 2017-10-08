@@ -4,80 +4,89 @@ Async web server that responds to incoming text messages for creating new accoun
 
 Primary dependencies:
 * twilio: https://www.twilio.com/docs/guides/how-to-receive-and-reply-in-python
-* socketio: https://github.com/miguelgrinberg/python-socketio
-* web3py
+* socketio: https://flask-socketio.readthedocs.io/en/latest/
+* web3py: http://web3py.readthedocs.io/en/latest/contracts.html
 
 Author: Chris Buonocore
 """
-import socketio
-import eventlet
-import eventlet.wsgi
-from flask import Flask, request, redirect
+from flask import Flask, request, redirect, json, jsonify
+from flask_socketio import SocketIO, send, emit
 from twilio.twiml.messaging_response import MessagingResponse
 
 # User libraries:
 import util
 from toastcoin import ToastCoin
 
-sio = socketio.Server()
 app = Flask(__name__)
+app.logger_name = 'toastcoin'
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app)
 
 # create the web3 object instance (pointing to the deployed token contract)
-CONTRACT_ADDR = "1" # TODO: add real address
-MY_NUM = "6506302443"
+# Address obtained from truffle deployment.
+CONTRACT_ADDR = "0x604f34b251061af7919ed09319bdbbcd937cede5"
+# MY_NUM = "6506302443"
 
 toast_coin = ToastCoin(CONTRACT_ADDR)
 
 @app.route("/sms", methods=['GET', 'POST'])
 def sms_reply():
-    """Process incoming text messages"""
+    """Process incoming text message commands"""
     number = request.form['From']
     number = number.strip("-")
     message_body = request.form['Body']
 
     message = None
-    if toast_coin.is_unregistered(number, message_body):
-        name = message_body 
-        message = toast_coin.register(number, name)
-    elif util.is_transaction(message_body):
-        from_addr = toast_coin.get_addr(number)
-        # to_addr = CONTRACT_ADDR # todo: replace with arbitrary address.
-        to_addr = toast_coin.get_addr(MY_NUM)
-        message = toast_coin.send_amount(from_addr, to_addr, amount)
-    elif util.is_balance_request(message_body):
-        message = toast_coin.get_balance(number)
+    try:
+        if toast_coin.is_unregistered(message_body):
+            message = toast_coin.register(message_body)
+        else:
+            tokens = message_body.split()
+            cmd = tokens[0].lower()
+            if cmd == "send":
+                from_addr = toast_coin.get_creator()
+                amount = float(tokens[1])
+                to_addr = toast_coin.get_addr(tokens[2])
+                message = toast_coin.send_amount(from_addr, to_addr, amount)
+            elif cmd == "balance":
+                message = toast_coin.get_balance(" ".join(tokens[1:]))
 
-    if message is not None:
-        sio.emit('activity', message)
-    else:
-        print("Unparseable incoming message (%s, %s)" % (number, message_body))
+        if message is not None:
+            emit('activity', message)
+        else:
+            print("Unparseable incoming message (%s, %s)" % (number, message_body))
 
+    except Exception as e:
+        print(e)
+        message = str(e)
     # Start our TwiML response (if we want to text message the user back)
     # resp = MessagingResponse()
     # Add a message
     # resp.message("The Robots are coming! Head for the hills!")
     # return str(resp)
 
-@sio.on('connect', namespace='/toastcoin')
-def connect(sid, environ):
-    print("connect ", sid)
+@app.route('/register', methods = ['POST'])
+def register():
+    # data in string format and you have to parse into dictionary
+    data = request.data
+    print(data)
+    dataDict = json.loads(data)
+    message = None
+    if 'name' in dataDict:
+        name = dataDict['name']
+        message = toast_coin.register(name)
+        emit('activity', message)
+    return jsonify(message)
 
-# @sio.on('register', namespace='/toastcoin')
-# def message(sid, data):
-#     print("register: ", data)
-#     sio.emit('reply', room=sid)
 
-# @sio.on('transaction', namespace='/toastcoin')
-# def message(sid, data):
-#     print("transaction: ", data)
-#     sio.emit('reply', room=sid)
+@app.route('/balance', methods = ['GET'])
+def balance():
+    # data in string format and you have to parse into dictionary
+    name = request.args.get('name', '')
+    message = toast_coin.get_balance(name)
+    emit('activity', message)
+    return jsonify(message)
 
-@sio.on('disconnect', namespace='/toastcoin')
-def disconnect(sid):
-    print('disconnect ', sid)
 
 if __name__ == '__main__':
-    # wrap Flask application with engineio's middleware
-    app = socketio.Middleware(sio, app)
-    # deploy as an eventlet WSGI server
-    eventlet.wsgi.server(eventlet.listen(('', 8000)), app)
+    socketio.run(app, host='localhost', port=9007)

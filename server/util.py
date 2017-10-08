@@ -5,17 +5,10 @@ class Transaction:
         self.receiver = receiver
         self.amount = amount
 
-def parse_balance_request(sender, body):
-    if "balance" not in body.lower():
-        raise Exception("balance not in request")
-
-    return sender
-
-def parse_transaction(sender, body):
+def parse_transaction(tokens):
     # expect string in the form: <amount> <receiver>
-    tokens = body.split()
-    if len(tokens) < 2:
-        raise Exception("Expected: <amount> <receiver>")
-    amount = float(tokens[0])
-    receiver = " ".join(tokens[1:])
+    if len(tokens) < 3:
+        raise Exception("Expected: send <amount> <receiver>")
+    amount = float(tokens[1])
+    receiver = " ".join(tokens[2:])
     return Transaction(sender, receiver, amount)

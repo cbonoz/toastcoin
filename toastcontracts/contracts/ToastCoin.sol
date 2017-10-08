@@ -1,11 +1,7 @@
 pragma solidity ^0.4.15;
 
-import "./Strings.sol";
-
 // @title ToastCoin
 contract ToastCoin {
-	using strings for *; // import methods from Strings.sol
-
 	// Constants.
 	uint constant START_BALANCE = 10000;
 
@@ -28,6 +24,10 @@ contract ToastCoin {
 
 	// Helper methods.
 
+	function isEmpty(string s) private returns (bool) {
+		return bytes(s).length == 0;
+	}
+
 	function getStartingAmount() returns(uint) {
 		return 10;
 	}
@@ -35,10 +35,10 @@ contract ToastCoin {
 	// By default these methods below are public. 
 	// Transactional Methods.
 
-	function register(address addr, string name) returns(bool success) {
+	function register(string name, address addr) returns(bool success) {
 		// name must be non-empty and not registered yet.
-		require(!name.toSlice().empty()); 
-		require(names[addr].toSlice().empty());
+		require(!isEmpty(name)); 
+		require(isEmpty(names[addr]));
 
 		accounts += 1;
 		names[addr] = name;
@@ -62,11 +62,15 @@ contract ToastCoin {
 
 	// Query Methods.
 
-	function isUnregistered(address addr) returns(bool registered) {
-		return names[addr].toSlice().empty(); // non-empty if registered
+	function isUnregistered(address addr) constant returns(bool registered) {
+		return isEmpty(names[addr]); // non-empty if registered
 	}
 
-	function getBalance(address addr) returns(uint) {
+	function getBalance(address addr) constant returns(uint) {
 		return balances[addr];
+	}
+
+	function getCreator() constant returns(address) {
+		return creator;
 	}
 }
